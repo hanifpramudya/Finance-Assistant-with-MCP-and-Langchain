@@ -59,7 +59,7 @@ typing-inspect==0.9.0 # Used by pydantic
 urllib3==2.2.1 # HTTP client library dependency
 uvicorn==0.29.0 # Used by FastMCP for SSE transport
 watchdog==4.0.0 # File system events, Streamlit dependency
-websockets==12.0 # Used by FastMCP client transports
+websockets==15.0.1 # Used by FastMCP client transports (updated for fastmcp 2.2.1 compatibility)
 yarl==1.9.4 # URL library, dependency for aiohttp
 
 # Note: If you specifically used the fallback create_openai_tool,
