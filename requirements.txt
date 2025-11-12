@@ -5,17 +5,20 @@ streamlit==1.33.0
 fastmcp==2.2.1
 
 # LLM and Agent Framework
-langchain==0.1.17
+langchain==0.2.17
 langchain-openai==0.1.5
-langchain-core==0.1.50
+langchain-anthropic==0.1.23
+langchain-core==0.2.43
+langchain-community==0.0.36
 langchainhub==0.1.15
 openai==1.23.6 # Version compatible with latest langchain components
+anthropic==0.72.1 # Anthropic Claude API - compatible with langchain-anthropic 0.1.23
 
 # MCP Server Dependencies (FastMCP depends on these, listed for clarity)
 mcp==1.6.0
 httpx==0.28.1 # Used by FastMCP, server, UI helpers, openai lib
 python-dotenv==1.1.0 # For loading .env files
-pydantic==2.7.2 # Core validation library used by FastMCP, Langchain, etc.
+pydantic>=2.7.4,<3.0.0 # Core validation library used by FastMCP, Langchain, etc.
 pydantic-settings==2.5.2 # For server settings
 
 # Dependencies of Streamlit/Langchain/OpenAI/FastMCP (pulled transitively, listed for info)

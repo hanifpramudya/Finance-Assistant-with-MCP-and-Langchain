@@ -29,7 +29,7 @@ try:
     from langchain.memory import ConversationBufferWindowMemory # Using windowed memory
     from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
     from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-    from langchain.tools import StructuredTool # Use StructuredTool for pydantic args
+    from langchain_core.tools import StructuredTool # Use StructuredTool for pydantic args
     from langchain_core.exceptions import OutputParserException # For handling agent errors
 except ImportError as e:
     st.error(f"ImportError: Could not import Langchain components: {e}. Please ensure 'langchain', 'langchain-anthropic', and 'pydantic' are installed correctly.")
