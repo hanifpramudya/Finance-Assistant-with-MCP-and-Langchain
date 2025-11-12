@@ -10,10 +10,10 @@ from typing import List, Dict, Any, Optional, Tuple, Type, Union
 from dotenv import load_dotenv
 load_dotenv()
 
-# --- Ensure OPENAI_API_KEY is set ---
+# --- Ensure ANTHROPIC_API_KEY is set ---
 import os
-if not os.getenv("OPENAI_API_KEY"):
-    st.error("FATAL: OPENAI_API_KEY environment variable not set. Langchain/OpenAI requires this.")
+if not os.getenv("ANTHROPIC_API_KEY"):
+    st.error("FATAL: ANTHROPIC_API_KEY environment variable not set. Langchain/Claude requires this.")
     st.stop()
 # --- ---
 
@@ -24,24 +24,22 @@ from mcp.types import TextContent, TextResourceContents
 
 # Langchain Components
 try:
-    from langchain_openai import ChatOpenAI
-    from langchain.agents import AgentExecutor, create_openai_tools_agent
+    from langchain_anthropic import ChatAnthropic
+    from langchain.agents import AgentExecutor, create_tool_calling_agent
     from langchain.memory import ConversationBufferWindowMemory # Using windowed memory
     from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
     from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
     from langchain.tools import StructuredTool # Use StructuredTool for pydantic args
-    from langchain import hub
     from langchain_core.exceptions import OutputParserException # For handling agent errors
 except ImportError as e:
-    st.error(f"ImportError: Could not import Langchain components: {e}. Please ensure 'langchain', 'langchain-openai', 'pydantic', and 'langchainhub' are installed correctly.")
+    st.error(f"ImportError: Could not import Langchain components: {e}. Please ensure 'langchain', 'langchain-anthropic', and 'pydantic' are installed correctly.")
     st.stop()
 
-# OpenAI Client (needed for separate suggestion call)
+# Anthropic Client (needed for separate suggestion call)
 try:
-    from openai import AsyncOpenAI
-    from openai.types.chat import ChatCompletionMessageToolCall # Although agent handles calls, type hint might be useful
+    from anthropic import AsyncAnthropic
 except ImportError as e:
-    st.error(f"ImportError: Could not import OpenAI components: {e}. Please ensure 'openai>=1.0.0' is installed correctly.")
+    st.error(f"ImportError: Could not import Anthropic components: {e}. Please ensure 'anthropic' is installed correctly.")
     st.stop()
 
 
@@ -57,8 +55,7 @@ log_ui = logging.getLogger("FinanceUI_Langchain_Agent_Suggest")
 
 # --- Configuration ---
 MCP_SERVER_TARGET = "fin_server_v2.py" # Make sure this points to your corrected server file
-OPENAI_MODEL = "gpt-4-turbo-preview"
-AGENT_PROMPT_HUB_REPO = "hwchase17/openai-tools-agent"
+CLAUDE_MODEL = "claude-3-5-sonnet-20241022"  # Using Claude 3.5 Sonnet with native tool calling
 MEMORY_K = 5 # Number of past interactions for the agent to remember
 # --- ---
 
@@ -185,7 +182,7 @@ tools_list = [
 
 # --- Function to Generate Suggestions ---
 async def generate_suggestions(history: List[Dict[str, str]]) -> List[str]:
-    """Generates follow-up suggestions using OpenAI."""
+    """Generates follow-up suggestions using Claude/Anthropic."""
     if not history or len(history) < 2: # Need at least user query and assistant response
         log_ui.info("Not enough history to generate suggestions.")
         return []
@@ -198,21 +195,24 @@ async def generate_suggestions(history: List[Dict[str, str]]) -> List[str]:
         log_ui.info("Could not find last user/assistant pair for suggestions.")
         return []
 
-    openai_client = AsyncOpenAI()
+    anthropic_client = AsyncAnthropic()
     suggestions = []
     suggestion_prompt_context = [last_user, last_assistant]
 
     try:
         log_ui.info("Generating follow-up suggestions...")
-        suggestion_request_messages = [
-            {"role": "system", "content": "Based on the last user query and assistant response, suggest exactly 3 distinct, relevant follow-up questions the user might ask next. Output *only* a JSON list of strings, like `[\"Question 1?\", \"Question 2?\", \"Question 3?\"]`. Do not include any other text or explanation."},
-        ] + suggestion_prompt_context
+        # Build the prompt for Claude
+        system_prompt = "Based on the last user query and assistant response, suggest exactly 3 distinct, relevant follow-up questions the user might ask next. Output *only* a JSON list of strings, like `[\"Question 1?\", \"Question 2?\", \"Question 3?\"]`. Do not include any other text or explanation."
+        user_context = f"User: {last_user['content']}\n\nAssistant: {last_assistant['content']}"
 
-        suggestion_response = await openai_client.chat.completions.create(
-            model=OPENAI_MODEL, messages=suggestion_request_messages, # type: ignore
-            temperature=0.6, max_tokens=150, response_format={"type": "json_object"}
+        suggestion_response = await anthropic_client.messages.create(
+            model=CLAUDE_MODEL,
+            max_tokens=150,
+            temperature=0.6,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_context}]
         )
-        suggestion_content = suggestion_response.choices[0].message.content
+        suggestion_content = suggestion_response.content[0].text
         if suggestion_content:
             try:
                 parsed_suggestions = json.loads(suggestion_content)
@@ -252,17 +252,9 @@ if "memory" not in st.session_state:
 if "agent_executor" not in st.session_state:
     try:
         log_ui.info("Initializing Langchain Agent Executor...")
-        llm = ChatOpenAI(model=OPENAI_MODEL, temperature=0.1)
-        try:
-            prompt_template = hub.pull(AGENT_PROMPT_HUB_REPO)
-        except Exception as hub_err:
-            log_ui.error(f"Could not pull prompt from Langchain Hub '{AGENT_PROMPT_HUB_REPO}': {hub_err}. Using basic fallback.")
-            prompt_template = ChatPromptTemplate.from_messages([
-                 ("system", "You are a helpful assistant."), MessagesPlaceholder(variable_name="chat_history"),
-                 ("human", "{input}"), MessagesPlaceholder(variable_name="agent_scratchpad"),
-            ])
+        llm = ChatAnthropic(model=CLAUDE_MODEL, temperature=0.1)
 
-        # Define the refined system message content
+        # Define custom system message for tool calling agent
         system_message_content = (
             "You are a helpful and conversational financial data assistant.\n"
             "**Available Tools:**\n"
@@ -280,17 +272,16 @@ if "agent_executor" not in st.session_state:
             "   - *Movers:* Use markdown lists for top gainers/losers/active (Ticker and Change %).\n"
             "5. **Handle Tool Errors:** If the tool result contains `{'error': '...'}`, clearly state the error message to the user."
         )
-        # Replace or prepend system message
-        if prompt_template.messages and isinstance(prompt_template.messages[0], SystemMessage):
-             prompt_template.messages[0].content = system_message_content
-        else:
-             prompt_template.messages.insert(0, SystemMessage(content=system_message_content))
 
-        # Ensure necessary placeholders exist
-        if "chat_history" not in prompt_template.input_variables: prompt_template.messages.insert(1, MessagesPlaceholder(variable_name="chat_history"))
-        if "agent_scratchpad" not in prompt_template.input_variables: prompt_template.messages.append(MessagesPlaceholder(variable_name="agent_scratchpad"))
+        # Create prompt template for tool calling agent (compatible with Claude's native tool calling)
+        prompt_template = ChatPromptTemplate.from_messages([
+            ("system", system_message_content),
+            MessagesPlaceholder(variable_name="chat_history"),
+            ("human", "{input}"),
+            MessagesPlaceholder(variable_name="agent_scratchpad"),
+        ])
 
-        agent = create_openai_tools_agent(llm, tools_list, prompt_template)
+        agent = create_tool_calling_agent(llm, tools_list, prompt_template)
         st.session_state.agent_executor = AgentExecutor(
             agent=agent, tools=tools_list, memory=st.session_state.memory,
             verbose=True, handle_parsing_errors=True, max_iterations=5
