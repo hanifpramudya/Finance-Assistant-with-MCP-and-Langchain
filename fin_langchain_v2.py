@@ -55,7 +55,7 @@ log_ui = logging.getLogger("FinanceUI_Langchain_Agent_Suggest")
 
 # --- Configuration ---
 MCP_SERVER_TARGET = "fin_server_v2.py" # Make sure this points to your corrected server file
-CLAUDE_MODEL = "claude-3-5-sonnet-20241022"  # Using Claude 3.5 Sonnet with native tool calling
+CLAUDE_MODEL = "claude-3-5-sonnet-20240620"  # Using Claude 3.5 Sonnet with native tool calling
 MEMORY_K = 5 # Number of past interactions for the agent to remember
 # --- ---
 
@@ -270,7 +270,7 @@ if "agent_executor" not in st.session_state:
             "   - *Price:* Use markdown bullets for Price, Change, %, High/Low, Source.\n"
             "   - *News:* Use numbered markdown list for headlines.\n"
             "   - *Movers:* Use markdown lists for top gainers/losers/active (Ticker and Change %).\n"
-            "5. **Handle Tool Errors:** If the tool result contains `{'error': '...'}`, clearly state the error message to the user."
+            "5. **Handle Tool Errors:** If the tool result contains `{{'error': '...'}}`, clearly state the error message to the user."
         )
 
         # Create prompt template for tool calling agent (compatible with Claude's native tool calling)
