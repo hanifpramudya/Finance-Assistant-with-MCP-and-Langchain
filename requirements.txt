@@ -6,17 +6,15 @@ fastmcp==2.2.1
 
 # LLM and Agent Framework
 langchain==0.2.17
-langchain-openai==0.1.5
 langchain-anthropic==0.1.23
 langchain-core==0.2.43
-langchain-community==0.0.36
+langchain-community==0.2.17
 langchainhub==0.1.15
-openai==1.23.6 # Version compatible with latest langchain components
 anthropic==0.72.1 # Anthropic Claude API - compatible with langchain-anthropic 0.1.23
 
 # MCP Server Dependencies (FastMCP depends on these, listed for clarity)
 mcp==1.6.0
-httpx==0.28.1 # Used by FastMCP, server, UI helpers, openai lib
+httpx==0.28.1 # Used by FastMCP, server, UI helpers
 python-dotenv==1.1.0 # For loading .env files
 pydantic>=2.7.4,<3.0.0 # Core validation library used by FastMCP, Langchain, etc.
 pydantic-settings==2.5.2 # For server settings
@@ -36,7 +34,7 @@ httpcore==1.0.5 # Core for httpx
 idna==3.7 # Internationalized domain names for httpx/requests
 jsonpatch==1.33 # Dependency for langchain
 jsonpointer==2.4 # Dependency for jsonpatch
-langsmith==0.1.52 # For Langchain tracing (optional but often included)
+langsmith==0.1.112 # For Langchain tracing (optional but often included)
 marshmallow==3.21.2 # Dependency for dataclasses-json
 multidict==6.0.5 # Dependency for aiohttp
 mypy-extensions==1.0.0 # Typing extensions dependency
@@ -52,11 +50,10 @@ requests==2.31.0 # Common HTTP library, Langchain dependency
 rich==13.9.4 # Used by FastMCP, Streamlit
 sse-starlette==2.1.0 # Used by FastMCP for SSE transport
 starlette==0.37.2 # Used by FastMCP for SSE transport
-tenacity==8.2.3 # Retrying library, used by langchain/openai
-tiktoken==0.6.0 # Tokenizer for OpenAI
+tenacity==8.2.3 # Retrying library, used by langchain
 toml==0.10.2 # Config file parsing
 toolz==0.12.1 # Functional utilities, Streamlit dependency
-tqdm==4.66.2 # Progress bars, used by openai/langchain
+tqdm==4.66.2 # Progress bars, used by langchain
 typing-extensions==4.11.0 # Backports for typing module
 typing-inspect==0.9.0 # Used by pydantic
 urllib3==2.2.1 # HTTP client library dependency
@@ -65,5 +62,3 @@ watchdog==4.0.0 # File system events, Streamlit dependency
 websockets==15.0.1 # Used by FastMCP client transports (updated for fastmcp 2.2.1 compatibility)
 yarl==1.9.4 # URL library, dependency for aiohttp
 
-# Note: If you specifically used the fallback create_openai_tool,
-# you might need 'inspect', but it's a built-in module.
